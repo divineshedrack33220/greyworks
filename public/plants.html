@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plants | GWE SolarPulse</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sparkline/2.1.2/jquery.sparkline.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'gwe-grey': '#A6A6A6',
+            'gwe-red': '#9A0F17',
+            'gwe-dark': '#202020',
+            'gwe-green': '#27AE60',
+            'gwe-light-grey': '#F7F7F7',
+            'gwe-amber': '#d97706',
+          },
+        },
+      },
+    };
+  </script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    .skeleton { background-color: #e5e7eb; border-radius: 0.375rem; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    .skeleton-text { height: 1rem; background-color: #e5e7eb; border-radius: 0.375rem; width: 100%; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    .skeleton-text-short { height: 1rem; background-color: #e5e7eb; border-radius: 0.375rem; width: 6rem; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    .skeleton-img { width: 4rem; height: 3rem; background-color: #e5e7eb; border-radius: 0.375rem; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    .skeleton-badge { height: 1.5rem; width: 4rem; background-color: #e5e7eb; border-radius: 9999px; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    .skeleton-btn { height: 2.25rem; width: 5rem; background-color: #e5e7eb; border-radius: 0.375rem; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    body { font-family: 'Inter', sans-serif; margin: 0; background: #f9fafb; }
+    .status-online { background-color: rgba(39, 174, 96, 0.1); color: #27AE60; }
+    .status-offline { background-color: rgba(154, 15, 23, 0.1); color: #9A0F17; }
+    .status-partial { background-color: rgba(217, 119, 6, 0.1); color: #d97706; }
+    .sparkline { width: 90px; height: 32px; display: inline-block; }
+  </style>
+</head>
+<body class="p-6">
+
+  <div class="max-w-7xl mx-auto">
+
+    <!-- STATS BAR -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white rounded-xl shadow p-5 text-center">
+        <div id="stat-total" class="text-3xl font-bold text-gwe-dark">—</div>
+        <div class="text-gwe-grey text-sm mt-1">Total Plants</div>
+      </div>
+      <div class="bg-white rounded-xl shadow p-5 text-center border-l-4 border-gwe-green">
+        <div id="stat-online" class="text-3xl font-bold text-gwe-green">—</div>
+        <div class="text-gwe-grey text-sm mt-1">Online</div>
+      </div>
+      <div class="bg-white rounded-xl shadow p-5 text-center border-l-4 border-gwe-red">
+        <div id="stat-offline" class="text-3xl font-bold text-gwe-red">—</div>
+        <div class="text-gwe-grey text-sm mt-1">Offline</div>
+      </div>
+      <div class="bg-white rounded-xl shadow p-5 text-center border-l-4 border-gwe-amber">
+        <div id="stat-alerts" class="text-3xl font-bold text-gwe-amber">—</div>
+        <div class="text-gwe-grey text-sm mt-1">Alerts / Partial</div>
+      </div>
+    </div>
+
+    <h1 class="text-3xl font-bold text-gwe-dark mb-8">All Plants</h1>
+
+    <div class="mb-8 flex gap-4 flex-wrap items-center">
+      <div class="flex gap-2">
+        <button onclick="filter('all')" class="filter-btn px-4 py-2 text-sm rounded-lg bg-gwe-red/20 text-gwe-red font-medium">All</button>
+        <button onclick="filter('online')" class="filter-btn px-4 py-2 text-sm rounded-lg bg-white border text-gwe-dark">Online</button>
+        <button onclick="filter('offline')" class="filter-btn px-4 py-2 text-sm rounded-lg bg-white border text-gwe-dark">Offline</button>
+        <button onclick="filter('alerts')" class="filter-btn px-4 py-2 text-sm rounded-lg bg-white border text-gwe-dark">Alerts</button>
+      </div>
+      <input type="text" id="search" placeholder="Search plant..." class="px-4 py-2 border rounded-lg max-w-xs">
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gwe-light-grey">
+            <tr>
+              <th class="px-4 py-3 text-left font-semibold w-20"></th>
+              <th class="px-4 py-3 text-left font-semibold">Plant Name</th>
+              <th class="px-4 py-3 text-left font-semibold">Location</th>
+              <th class="px-4 py-3 text-left font-semibold">Capacity</th>
+              <th class="px-4 py-3 text-left font-semibold">Power Now</th>
+              <th class="px-4 py-3 text-left font-semibold">Today</th>
+              <th class="px-4 py-3 text-left font-semibold">Peak Hours (h)</th>
+              <th class="px-4 py-3 text-left font-semibold">Trend</th>
+              <th class="px-4 py-3 text-left font-semibold">Status</th>
+              <th class="px-4 py-3 text-left font-semibold">Alerts</th>
+              <th class="px-4 py-3 text-left font-semibold">Last Update</th>
+              <th class="px-4 py-3 text-left font-semibold">Action</th>
+            </tr>
+          </thead>
+          <tbody id="table-body" class="divide-y divide-gray-200">
+            <!-- Skeleton rows injected on load -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const historyMap = new Map();
+
+  function createSkeletonRows(count = 8) {
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td class="px-4 py-3"><div class="skeleton-img"></div></td>
+        <td class="px-4 py-3"><div class="skeleton-text w-48"></div></td>
+        <td class="px-4 py-3"><div class="skeleton-text w-32"></div></td>
+        <td class="px-4 py-3"><div class="skeleton-text-short"></div></td>
+        <td class="px-4 py-3"><div class="skeleton-text-short"></div></td>
+        <td class="px-4 py-3"><div class="skeleton-text-short"></div></td>
+        <td class="px-4 py-3"><div class="skeleton-text-short"></div></td>
+        <td class="px-4 py-3 text-center"><div class="skeleton h-8 w-20 mx-auto"></div></td>
+        <td class="px-4 py-3"><div class="skeleton-badge mx-auto"></div></td>
+        <td class="px-4 py-3"><div class="skeleton-badge mx-auto"></div></td>
+        <td class="px-4 py-3"><div class="skeleton-text w-36"></div></td>
+        <td class="px-4 py-3"><div class="skeleton-btn mx-auto"></div></td>
+      `;
+      tbody.appendChild(row);
+    }
+  }
+
+  function renderPlants(data) {
+    let plants = [];
+    if (Array.isArray(data)) plants = data;
+    else if (data?.list) plants = data.list;
+    else if (data?.data?.list) plants = data.data.list;
+    else if (data?.stations) plants = data.stations;
+    else return; // no valid data
+
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML = '';
+
+    let onlineCount = 0, offlineCount = 0, alertCount = 0;
+
+    plants.forEach(p => {
+      const id = p.id || p.stationId || p.name || Math.random().toString();
+      const name = (p.name || p.stationName || 'Unknown').trim();
+      const location = p.address || p.locationAddress || '—';
+      const capacity = Number(p.installedCapacity || p.designPower || 0).toFixed(1);
+      const powerW = Number(p.generationPower || p.real || 0);
+      const powerKW = (powerW / 1000).toFixed(2);
+      const todayRaw = Number(p.generationValue || p.todayEnergy || 0);
+      const today = todayRaw.toFixed(1);
+      const peakHours = capacity > 0 ? (todayRaw / capacity).toFixed(2) : '0.00';
+      const lastUpdate = p.lastUpdateTime ? new Date(p.lastUpdateTime * 1000).toLocaleString() : '—';
+      const isOnline = powerW > 50;
+      const hasAlerts = (p.alarmCount || p.alertCount || 0) > 0 || (powerW > 0 && powerW <= 50);
+      const imgUrl = p.stationImage || p.image || 'https://via.placeholder.com/120x80/202020/FFFFFF?text=No+Image';
+
+      if (isOnline) onlineCount++;
+      else offlineCount++;
+      if (hasAlerts) alertCount++;
+
+      if (!historyMap.has(id)) historyMap.set(id, []);
+      const hist = historyMap.get(id);
+      hist.push(todayRaw);
+      if (hist.length > 12) hist.shift();
+
+      const detailUrl = `plant-details.html?name=${encodeURIComponent(name)}&id=${id}`;
+
+      const row = document.createElement('tr');
+      row.className = 'hover:bg-gray-50';
+      row.dataset.status = isOnline ? 'online' : 'offline';
+      row.dataset.alerts = hasAlerts ? 'yes' : 'no';
+
+      row.innerHTML = `
+        <td class="px-4 py-3">
+          <img src="${imgUrl}" class="w-16 h-12 object-cover rounded-md shadow-sm" onerror="this.src='https://via.placeholder.com/120x80'">
+        </td>
+        <td class="px-4 py-3 font-medium">${name}</td>
+        <td class="px-4 py-3 text-gwe-grey">${location}</td>
+        <td class="px-4 py-3">${capacity} kWp</td>
+        <td class="px-4 py-3"><span class="text-gwe-red font-bold">${powerKW} kW</span></td>
+        <td class="px-4 py-3 font-medium">${today} kWh</td>
+        <td class="px-4 py-3 font-medium text-gwe-dark">${peakHours} h</td>
+        <td class="px-4 py-3 text-center">
+          <span class="sparkline" values="${hist.join(',')}"></span>
+        </td>
+        <td class="px-4 py-3">
+          <span class="px-3 py-1 rounded-full text-xs font-medium ${isOnline ? 'status-online' : 'status-offline'}">
+            ${isOnline ? 'Online' : 'Offline'}
+          </span>
+        </td>
+        <td class="px-4 py-3">
+          <span class="px-3 py-1 rounded-full text-xs font-medium ${hasAlerts ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600'}">
+            ${hasAlerts ? 'Alert' : 'Clear'}
+          </span>
+        </td>
+        <td class="px-4 py-3 text-sm text-gwe-grey">${lastUpdate}</td>
+        <td class="px-4 py-3">
+          <a href="${detailUrl}" class="inline-block bg-gwe-red text-white px-5 py-2 rounded text-sm font-medium hover:bg-red-800 transition">
+            View
+          </a>
+        </td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    // Update stats numbers correctly
+    document.getElementById('stat-total').textContent = plants.length;
+    document.getElementById('stat-online').textContent = onlineCount;
+    document.getElementById('stat-offline').textContent = offlineCount;
+    document.getElementById('stat-alerts').textContent = alertCount;
+
+    // Render sparklines
+    requestAnimationFrame(() => {
+      $('.sparkline').sparkline('html', {
+        type: 'line',
+        width: '90px',
+        height: '32px',
+        lineColor: '#27AE60',
+        fillColor: 'rgba(39, 174, 96, 0.08)',
+        spotColor: false,
+        minSpotColor: false,
+        maxSpotColor: false,
+        highlightSpotColor: '#27AE60',
+        highlightLineColor: '#999',
+        chartRangeMin: 0
+      });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Initial shimmer state
+    createSkeletonRows(8);
+
+    // Connect to real SSE stream
+    let evtSource;
+    try {
+      evtSource = new EventSource('/api/stream');
+      evtSource.onmessage = e => {
+        try {
+          const data = JSON.parse(e.data);
+          renderPlants(data);
+        } catch (err) {
+          console.error('Parse error:', err);
+        }
+      };
+      evtSource.onerror = () => {
+        console.warn('SSE error – will retry');
+        evtSource.close();
+        setTimeout(() => evtSource = new EventSource('/api/stream'), 3000);
+      };
+    } catch (err) {
+      console.warn('EventSource not supported or blocked');
+    }
+  });
+
+  // Search
+  document.getElementById('search').addEventListener('input', e => {
+    const term = e.target.value.toLowerCase();
+    document.querySelectorAll('#table-body tr').forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
+    });
+  });
+
+  // Filter
+  window.filter = function(status) {
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      b.classList.remove('bg-gwe-red/20', 'text-gwe-red');
+      b.classList.add('bg-white', 'border', 'text-gwe-dark');
+    });
+    event.target.classList.remove('bg-white', 'border', 'text-gwe-dark');
+    event.target.classList.add('bg-gwe-red/20', 'text-gwe-red');
+
+    document.querySelectorAll('#table-body tr').forEach(row => {
+      const isOnline = row.dataset.status === 'online';
+      const hasAlerts = row.dataset.alerts === 'yes';
+      let show = false;
+      if (status === 'all') show = true;
+      else if (status === 'online') show = isOnline;
+      else if (status === 'offline') show = !isOnline;
+      else if (status === 'alerts') show = hasAlerts;
+      row.style.display = show ? '' : 'none';
+    });
+  };
+</script>
+</body>
+</html>

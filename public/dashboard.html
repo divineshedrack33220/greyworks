@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Greyworks Solar Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; margin: 0; background: #f9fafb; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: #A6A6A6; border-radius: 3px; }
+    .live-dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    #map { height: 100%; width: 100%; border-radius: 0.5rem; min-height: 360px; }
+    .map-container { height: 360px; width: 100%; }
+    canvas { width: 100% !important; height: 240px !important; }
+  </style>
+</head>
+<body class="p-3 sm:p-4 space-y-4 min-h-screen">
+
+  <!-- Live Indicator -->
+  <div class="text-right text-xs text-gray-500">
+    <span class="live-dot inline-block mr-1"></span>
+    <span>Live • Updates every 5 min</span>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="bg-white border border-gray-300 rounded-lg p-4 hover:shadow transition">
+      <div class="flex justify-between items-start">
+        <div>
+          <p class="text-xs text-gray-500">Plants Online</p>
+          <p id="plantsCount" class="text-3xl font-bold mt-1 text-green-600">—</p>
+        </div>
+        <i data-feather="home" class="w-6 h-6 text-gray-500"></i>
+      </div>
+    </div>
+    <div class="bg-white border border-gray-300 rounded-lg p-4 hover:shadow transition">
+      <div class="flex justify-between items-start">
+        <div>
+          <p class="text-xs text-gray-500">Power Now</p>
+          <p id="powerNow" class="text-xl font-bold mt-1 text-red-600">— kW</p>
+        </div>
+        <i data-feather="zap" class="w-6 h-6 text-red-500"></i>
+      </div>
+    </div>
+    <div class="bg-white border border-gray-300 rounded-lg p-4 hover:shadow transition">
+      <div class="flex justify-between items-start">
+        <div>
+          <p class="text-xs text-gray-500">Today Energy</p>
+          <p id="todayEnergy" class="text-xl font-bold mt-1 text-blue-600">— kWh</p>
+        </div>
+        <i data-feather="sun" class="w-6 h-6 text-yellow-500"></i>
+      </div>
+    </div>
+    <div class="bg-white border border-gray-300 rounded-lg p-4 hover:shadow transition">
+      <div class="flex justify-between items-start">
+        <div>
+          <p class="text-xs text-gray-500">Total Plants</p>
+          <p id="totalPlants" class="text-xl font-bold mt-1 text-gray-900">—</p>
+        </div>
+        <i data-feather="grid" class="w-6 h-6 text-gray-500"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <section class="bg-white rounded-lg border border-gray-200 p-4">
+    <div class="flex justify-between items-center mb-3">
+      <h2 class="text-sm font-semibold text-gray-800">Solar Plant Locations</h2>
+      <div class="flex space-x-3 text-xs">
+        <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-green-500 mr-1"></span>Online</span>
+        <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-yellow-500 mr-1"></span>Generating</span>
+        <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-red-500 mr-1"></span>Offline</span>
+      </div>
+    </div>
+    <div class="map-container bg-gray-100 rounded-lg overflow-hidden">
+      <div id="map"></div>
+    </div>
+  </section>
+
+  <!-- Charts -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <section class="bg-white rounded-lg border border-gray-200 p-5">
+      <h3 class="text-sm font-medium text-gray-800 mb-3">Realtime Power (kW)</h3>
+      <canvas id="realtimePowerChart"></canvas>
+    </section>
+    <section class="bg-white rounded-lg border border-gray-200 p-5">
+      <h3 class="text-sm font-medium text-gray-800 mb-3">Today's Energy (kWh)</h3>
+      <canvas id="todayEnergyChart"></canvas>
+    </section>
+  </div>
+
+<script>
+  feather.replace();
+
+  let map, markers = {}, mapReady = false;
+
+  function initMap() {
+    if (mapReady) return;
+    map = L.map('map').setView([9.0, 8.0], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© Greyworks'
+    }).addTo(map);
+    mapReady = true;
+  }
+
+  const powerChart = new Chart(document.getElementById('realtimePowerChart'), {
+    type: 'line',
+    data: { labels: [], datasets: [{ data: [], borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.4 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
+
+  const energyChart = new Chart(document.getElementById('todayEnergyChart'), {
+    type: 'bar',
+    data: { labels: [], datasets: [{ data: [], backgroundColor: '#3b82f6' }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
+
+  // Restore history from browser
+  const storage = {
+    save(key, data) { localStorage.setItem('solar_' + key, JSON.stringify(data)); },
+    load(key) { try { return JSON.parse(localStorage.getItem('solar_' + key)) || []; } catch { return []; } }
+  };
+
+  let powerHistory = storage.load('power');
+  let energyHistory = storage.load('energy');
+
+  if (powerHistory.length) {
+    powerChart.data.labels = powerHistory.map(h => h.t);
+    powerChart.data.datasets[0].data = powerHistory.map(h => h.v);
+    powerChart.update('quiet');
+  }
+  if (energyHistory.length) {
+    energyChart.data.labels = energyHistory.map(h => h.t);
+    energyChart.data.datasets[0].data = energyHistory.map(h => h.v);
+    energyChart.update('quiet');
+  }
+
+  const evtSource = new EventSource('/api/stream');
+  evtSource.onmessage = function(e) {
+    const stations = JSON.parse(e.data);
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Calculate totals using real-time data
+    const onlineCount = stations.filter(s => s.networkStatus?.toUpperCase() === 'NORMAL').length;
+    const totalPowerW = stations.reduce((sum, s) => sum + (Number(s.generationPower) || 0), 0);
+    const totalTodaykWh = stations.reduce((sum, s) => sum + (Number(s.generationValue) || 0), 0);
+
+    const powerkW = (totalPowerW / 1000).toFixed(1);
+    const todaykWh = totalTodaykWh.toFixed(1);
+
+    // Update KPIs
+    document.getElementById('plantsCount').textContent = onlineCount;
+    document.getElementById('totalPlants').textContent = stations.length;
+    document.getElementById('powerNow').textContent = powerkW + ' kW';
+    document.getElementById('todayEnergy').textContent = todaykWh + ' kWh';
+
+    // Update charts with history
+    powerHistory.push({ t: time, v: parseFloat(powerkW) });
+    energyHistory.push({ t: time, v: parseFloat(todaykWh) });
+
+    if (powerHistory.length > 50) powerHistory.shift();
+    if (energyHistory.length > 50) energyHistory.shift();
+
+    storage.save('power', powerHistory);
+    storage.save('energy', energyHistory);
+
+    powerChart.data.labels = powerHistory.map(x => x.t);
+    powerChart.data.datasets[0].data = powerHistory.map(x => x.v);
+    powerChart.update('quiet');
+
+    energyChart.data.labels = energyHistory.map(x => x.t);
+    energyChart.data.datasets[0].data = energyHistory.map(x => x.v);
+    energyChart.update('quiet');
+
+    // Update map
+    if (!mapReady) initMap();
+    stations.forEach(s => {
+      const lat = s.latitude || s.lat;
+      const lng = s.longitude || s.lng;
+      if (!lat || !lng) return;
+
+      const isOnline = s.networkStatus?.toUpperCase() === 'NORMAL';
+      const isGenerating = (s.generationPower || 0) > 50; // small threshold for generating
+      let color = '#ef4444'; // offline
+      if (isOnline && isGenerating) color = '#f59e0b'; // generating
+      if (isOnline) color = '#10b981'; // online
+
+      const icon = L.divIcon({
+        html: `<div style="background:${color};width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>`,
+        iconSize: [20, 20],
+        className: 'custom-marker'
+      });
+
+      if (markers[s.stationId]) {
+        markers[s.stationId].setLatLng([lat, lng]).setIcon(icon);
+      } else {
+        markers[s.stationId] = L.marker([lat, lng], { icon }).addTo(map);
+      }
+    });
+  };
+
+  evtSource.onerror = () => {
+    console.log('SSE connection lost. Reconnecting...');
+  };
+</script>
+</body>
+</html>

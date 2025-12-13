@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reports | GWE SolarPulse</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Feather Icons -->
+  <script src="https://unpkg.com/feather-icons"></script>
+
+  <!-- Flatpickr -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+  <!-- Tailwind config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'gwe-grey': '#A6A6A6',
+            'gwe-red': '#9A0F17',
+            'gwe-dark': '#202020',
+            'gwe-green': '#27AE60',
+            'gwe-yellow': '#F2C94C',
+            'gwe-light': '#F7F7F7',
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    body { font-family: 'Inter', sans-serif; margin: 0; background: #f9fafb; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: #A6A6A6; border-radius: 3px; }
+
+    .skeleton { @apply bg-gwe-grey/35 animate-pulse rounded; }
+    .skeleton-text { @apply h-4 w-32; }
+    .skeleton-title { @apply h-6 w-48; }
+
+    .status-completed { @apply bg-green-100 text-gwe-green; }
+    .status-scheduled { @apply bg-yellow-100 text-gwe-yellow; }
+    .status-failed { @apply bg-red-100 text-gwe-red; }
+
+    .progress-bar { @apply h-2 bg-gwe-red rounded-full transition-all duration-300; }
+    .progress-container { @apply w-full bg-gwe-grey/20 rounded-full h-2; }
+
+    .modal { @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden; }
+    .modal-content { @apply bg-white rounded-xl border border-gwe-grey max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-lg; }
+
+    .thumbnail { @apply border border-gwe-grey rounded p-2 cursor-pointer hover:shadow transition; }
+  </style>
+</head>
+
+<body class="p-4 sm:p-6">
+
+  <!-- ERROR STATE -->
+  <div id="error-state" class="hidden max-w-4xl mx-auto bg-[#FCE8E9] border border-gwe-red rounded-xl p-8 text-center">
+    <i data-feather="alert-triangle" class="w-12 h-12 text-gwe-red mx-auto mb-4"></i>
+    <h2 class="text-xl font-bold text-gwe-red mb-2">Failed to generate report.</h2>
+    <button onclick="location.reload()" class="mt-4 bg-gwe-red text-white px-6 py-2 rounded-lg font-medium hover:bg-[#7F0C14]">
+      Retry
+    </button>
+  </div>
+
+  <!-- PROGRESS LOADER -->
+  <div id="progress-loader" class="hidden max-w-2xl mx-auto bg-gwe-light border border-gwe-grey rounded-xl p-6 text-center">
+    <p class="text-gwe-dark font-medium mb-3">Generating report… please wait.</p>
+    <div class="progress-container">
+      <div id="progress-fill" class="progress-bar w-0"></div>
+    </div>
+    <p class="text-xs text-gwe-grey mt-2">This may take a few seconds.</p>
+  </div>
+
+  <!-- LOADING STATE -->
+  <div id="loading-state" class="max-w-7xl mx-auto space-y-6">
+    <div class="flex justify-between items-center pt-6"><div class="skeleton-title"></div><div class="skeleton h-10 w-32"></div></div>
+    <div class="bg-white border border-gwe-grey rounded-xl p-6 mb-8"><div class="skeleton h-48"></div></div>
+    <div class="bg-white border border-gwe-grey rounded-xl p-6"><div class="skeleton h-64"></div></div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div id="reports-content" class="hidden max-w-7xl mx-auto">
+
+    <!-- SECTION 1: Header -->
+    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center pt-6 gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gwe-dark">Reports</h1>
+        <p class="text-sm text-gwe-grey mt-1">Generate, schedule, and download detailed energy performance reports.</p>
+      </div>
+      <div class="flex gap-3">
+        <button class="bg-gwe-red text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#7F0C14] flex items-center">
+          <i data-feather="plus" class="w-4 h-4 mr-1"></i> New Report
+        </button>
+        <button class="border border-gwe-grey text-gwe-dark px-4 py-2 rounded-lg text-sm font-medium hover:bg-gwe-grey/10">
+          Export All
+        </button>
+        <button class="border border-gwe-red text-gwe-red px-4 py-2 rounded-lg text-sm font-medium hover:bg-gwe-red/5">
+          Share
+        </button>
+      </div>
+    </div>
+
+    <!-- SECTION 2: Report Creation Panel -->
+    <div class="bg-white border border-[#E0E0E0] rounded-xl p-6 mt-8">
+      <h3 class="text-lg font-semibold mb-4">Create New Report</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gwe-dark mb-1">Report Type</label>
+          <select class="w-full p-2 border border-gwe-grey rounded-lg text-sm">
+            <option>Daily</option>
+            <option>Monthly</option>
+            <option>Annual</option>
+            <option>Custom Range</option>
+            <option>Device-Level</option>
+            <option>Plant-Level</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gwe-dark mb-1">Plants / Devices</label>
+          <select multiple class="w-full p-2 border border-gwe-grey rounded-lg text-sm h-24">
+            <option>Solar Farm Alpha</option>
+            <option>Rooftop Array 5</option>
+            <option>Desert Bloom</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gwe-dark mb-1">Date Range</label>
+          <input type="text" id="report-date-range" class="w-full p-2 border border-gwe-grey rounded-lg text-sm" placeholder="Select range">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gwe-dark mb-1">Format</label>
+          <div class="flex gap-2">
+            <button class="bg-gwe-red text-white px-3 py-1.5 rounded text-xs font-medium">PDF</button>
+            <button class="border border-gwe-grey text-gwe-dark px-3 py-1.5 rounded text-xs">Excel</button>
+            <button class="border border-gwe-red text-gwe-red px-3 py-1.5 rounded text-xs">CSV</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <p class="text-sm font-medium text-gwe-dark mb-2">Include Sections</p>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+          <label class="flex items-center"><input type="checkbox" class="mr-2"> <span>Energy Overview</span></label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2"> <span>Device Breakdown</span></label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2"> <span>Alerts & Logs</span></label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2"> <span>PR Metrics</span></label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2"> <span>Weather Data</span></label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2"> <span>Charts & Graphs</span></label>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 mt-6">
+        <button class="border border-gwe-grey text-gwe-dark px-5 py-2 rounded-lg text-sm font-medium">Reset</button>
+        <button onclick="generateReport()" class="bg-gwe-red text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#7F0C14]">
+          Generate Report
+        </button>
+      </div>
+    </div>
+
+    <!-- SECTION 3: Generated Reports Table -->
+    <div class="bg-white border border-[#E0E0E0] rounded-xl p-6 mt-8">
+      <h3 class="text-lg font-semibold mb-4">Generated Reports</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gwe-light">
+            <tr>
+              <th class="text-left p-3">Name</th>
+              <th class="text-left p-3">Type</th>
+              <th class="text-left p-3">Plant</th>
+              <th class="text-left p-3">Range</th>
+              <th class="text-left p-3">Generated</th>
+              <th class="text-left p-3">Format</th>
+              <th class="text-left p-3">Status</th>
+              <th class="text-left p-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="hover:bg-gwe-grey/10">
+              <td class="p-3">Monthly Performance - Alpha</td>
+              <td class="p-3">Monthly</td>
+              <td class="p-3">Solar Farm Alpha</td>
+              <td class="p-3">Oct 1-31, 2025</td>
+              <td class="p-3">2 min ago</td>
+              <td class="p-3">PDF</td>
+              <td class="p-3"><span class="status-completed text-xs px-2 py-1 rounded-full font-medium">Completed</span></td>
+              <td class="p-3">
+                <button class="bg-gwe-red text-white px-2 py-1 rounded text-xs mr-1">DL</button>
+                <button onclick="openPreview()" class="border border-gwe-red text-gwe-red px-2 py-1 rounded text-xs mr-1">View</button>
+                <button class="border border-gwe-grey text-gwe-dark px-2 py-1 rounded text-xs">Del</button>
+              </td>
+            </tr>
+            <!-- More rows -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SECTION 4: Scheduled Reports -->
+    <div class="mt-8 space-y-4">
+      <h3 class="text-lg font-semibold">Scheduled Reports</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="bg-white border border-[#E0E0E0] rounded-xl p-5">
+          <h4 class="font-medium text-gwe-dark">Daily Summary</h4>
+          <p class="text-xs text-gwe-grey mt-1">Every day at 6:00 AM</p>
+          <div class="flex gap-2 mt-3">
+            <span class="status-completed text-xs px-2 py-0.5 rounded-full">Active</span>
+          </div>
+          <p class="text-xs text-gwe-dark mt-2">Next run: Tomorrow 6:00 AM</p>
+          <p class="text-xs text-gwe-grey">Created by: JD</p>
+          <div class="flex gap-2 mt-3">
+            <button class="border border-gwe-grey text-gwe-dark px-3 py-1.5 rounded text-xs">Edit</button>
+            <button class="bg-gwe-red text-white px-3 py-1.5 rounded text-xs">Pause</button>
+            <button class="border border-gwe-red text-gwe-red px-3 py-1.5 rounded text-xs">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  feather.replace();
+
+  // Simulate loading
+  setTimeout(() => {
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('reports-content').classList.remove('hidden');
+  }, 1200);
+
+  // Date picker
+  flatpickr("#report-date-range", { mode: "range", dateFormat: "Y-m-d" });
+
+  // Generate report with progress
+  function generateReport() {
+    document.getElementById('reports-content').classList.add('hidden');
+    document.getElementById('progress-loader').classList.remove('hidden');
+    let progress = 0;
+    const fill = document.getElementById('progress-fill');
+    const interval = setInterval(() => {
+      progress += 10;
+      fill.style.width = progress + '%';
+      if (progress >= 100) {
+        clearInterval(interval);
+        setTimeout(() => {
+          document.getElementById('progress-loader').classList.add('hidden');
+          document.getElementById('reports-content').classList.remove('hidden');
+          alert('Report generated!');
+        }, 500);
+      }
+    }, 300);
+  }
+
+  // Modal
+  function openPreview() {
+    document.getElementById('preview-modal').classList.remove('hidden');
+  }
+  function closeModal() {
+    document.getElementById('preview-modal').classList.add('hidden');
+  }
+</script>
+
+</body>
+</html>

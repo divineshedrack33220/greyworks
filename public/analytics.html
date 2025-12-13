@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics | GWE SolarPulse</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'gwe-grey': '#A6A6A6',
+            'gwe-red': '#9A0F17',
+            'gwe-dark': '#202020',
+            'gwe-green': '#27AE60',
+            'gwe-yellow': '#F2C94C',
+            'gwe-light': '#F7F7F7',
+          },
+        },
+      },
+    };
+  </script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    body { font-family: 'Inter', sans-serif; margin: 0; background: #f9fafb; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: #A6A6A6; border-radius: 3px; }
+
+    .skeleton { background-color: rgba(166, 166, 166, 0.35); animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; border-radius: 0.375rem; }
+    .skeleton-title { height: 1.75rem; width: 12rem; }
+
+    .heatmap-cell { width: 2rem; height: 2rem; border: 1px solid white; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; color: white; font-weight: 500; }
+    .status-good { background-color: #27AE60; color: white; }
+    .status-avg { background-color: #F2C94C; color: #202020; }
+    .status-poor { background-color: #9A0F17; color: white; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+  </style>
+</head>
+<body class="p-4 sm:p-6">
+
+  <div id="error-state" class="hidden max-w-4xl mx-auto bg-[#FCE8E9] border border-gwe-red rounded-xl p-8 text-center">
+    <i data-feather="alert-triangle" class="w-12 h-12 text-gwe-red mx-auto mb-4"></i>
+    <h2 class="text-xl font-bold text-gwe-red mb-2">Unable to load analytics data.</h2>
+    <p class="text-gwe-grey mb-4">Check your connection or try again later.</p>
+    <button onclick="location.reload()" class="mt-4 bg-gwe-red text-white px-6 py-2 rounded-lg font-medium hover:bg-[#7F0C14]">
+      Retry
+    </button>
+  </div>
+
+  <div id="loading-state" class="max-w-7xl mx-auto space-y-6">
+    <div class="flex justify-between items-center pt-6"><div class="skeleton-title"></div><div class="skeleton h-10 w-48"></div></div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="bg-white border border-gwe-grey rounded-xl p-6"><div class="skeleton skeleton-title mb-2"></div><div class="skeleton h-8 w-24"></div></div>
+      <div class="bg-white border border-gwe-grey rounded-xl p-6"><div class="skeleton skeleton-title mb-2"></div><div class="skeleton h-8 w-24"></div></div>
+      <div class="bg-white border border-gwe-grey rounded-xl p-6"><div class="skeleton skeleton-title mb-2"></div><div class="skeleton h-8 w-24"></div></div>
+      <div class="bg-white border border-gwe-grey rounded-xl p-6"><div class="skeleton skeleton-title mb-2"></div><div class="skeleton h-8 w-24"></div></div>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-white border border-gwe-grey rounded-xl p-6"><div class="skeleton h-64"></div></div>
+      <div class="bg-white border border-gwe-grey rounded-xl p-6"><div class="skeleton h-64"></div></div>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-white border border-gwe-grey rounded-xl p-6"><div class="skeleton h-64"></div></div>
+      <div class="bg-white border border-gwe-grey rounded-xl p-6"><div class="skeleton h-64"></div></div>
+    </div>
+  </div>
+
+  <div id="analytics-content" class="hidden max-w-7xl mx-auto">
+    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center pt-6 gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gwe-dark">Analytics & Insights</h1>
+        <p class="text-sm text-gwe-grey mt-1">Advanced performance intelligence across all plants and devices.</p>
+      </div>
+      <div class="flex flex-wrap gap-3 items-center">
+        <input type="text" id="date-range" class="px-3 py-2 border border-gwe-grey rounded-lg text-sm w-48" placeholder="Select date range">
+        <button class="px-6 py-2.5 text-xs rounded bg-gwe-red text-white font-medium">Compare Plants</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8" id="kpi-cards"></div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+      <div class="bg-white border border-[#E0E0E0] rounded-xl p-6">
+        <h3 class="text-lg font-semibold mb-4">Realtime Power Trend (kW)</h3>
+        <canvas id="mainChart" height="280"></canvas>
+      </div>
+      <div class="bg-white border border-[#E0E0E0] rounded-xl p-6">
+        <h3 class="text-lg font-semibold mb-4">Today's Energy Trend (kWh)</h3>
+        <canvas id="energyChart" height="280"></canvas>
+      </div>
+    </div>
+
+    <!-- Heatmap and Ranking - Flexible layout for better consistency -->
+    <div class="flex flex-col lg:flex-row gap-6 mt-6">
+      <div class="bg-white border border-[#E0E0E0] rounded-xl p-6 flex-1">
+        <h3 class="text-lg font-semibold mb-4">Plant Performance Heatmap (Daily kWh)</h3>
+        <div class="overflow-x-auto" id="heatmap-container"></div>
+      </div>
+      <div class="bg-white border border-[#E0E0E0] rounded-xl p-6 flex-1 min-w-0">
+        <h3 class="text-lg font-semibold mb-4">Plant Ranking</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm" id="ranking-table">
+            <thead class="bg-gwe-light">
+              <tr>
+                <th class="text-left py-3 px-2">Plant</th>
+                <th class="text-left py-3 px-2">Today (kWh)</th>
+                <th class="text-left py-3 px-2">Power (kW)</th>
+                <th class="text-left py-3 px-2">Status</th>
+              </tr>
+            </thead>
+            <tbody id="ranking-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  feather.replace();
+
+  let mainChart, energyChart;
+
+  const storage = {
+    save(key, data) { localStorage.setItem('analytics_' + key, JSON.stringify(data)); },
+    load(key) { try { return JSON.parse(localStorage.getItem('analytics_' + key)) || []; } catch { return []; } }
+  };
+
+  let powerHistory = storage.load('power');
+  let energyHistory = storage.load('energy');
+
+  function showError() {
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('error-state').classList.remove('hidden');
+  }
+
+  function renderAnalytics(plants) {
+    if (!plants || plants.length === 0) return;
+
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('analytics-content').classList.remove('hidden');
+
+    const totalPowerW = plants.reduce((s, p) => s + (Number(p.generationPower) || 0), 0);
+    const totalTodayWh = plants.reduce((s, p) => s + (Number(p.generationValue) || 0), 0);
+    const totalTodaykWh = totalTodayWh.toFixed(1);
+
+    const currentPowerkW = (totalPowerW / 1000).toFixed(1);
+    const gridExportkWh = (totalTodayWh * 0.8).toFixed(1);
+    const prRatio = '85%';
+
+    const kpiContainer = document.getElementById('kpi-cards');
+    kpiContainer.innerHTML = `
+      <div class="bg-white border border-gwe-grey rounded-xl p-6 shadow-sm"><div class="flex justify-between"><div><p class="text-sm text-gwe-grey">Total Energy</p><p class="text-3xl font-bold text-gwe-red mt-1">${totalTodaykWh} kWh</p></div><i data-feather="zap"></i></div></div>
+      <div class="bg-white border border-gwe-grey rounded-xl p-6 shadow-sm"><div class="flex justify-between"><div><p class="text-sm text-gwe-grey">Current Power</p><p class="text-3xl font-bold text-gwe-red mt-1">${currentPowerkW} kW</p></div><i data-feather="trending-up"></i></div></div>
+      <div class="bg-white border border-gwe-grey rounded-xl p-6 shadow-sm"><div class="flex justify-between"><div><p class="text-sm text-gwe-grey">Grid Export</p><p class="text-3xl font-bold text-gwe-red mt-1">+${gridExportkWh} kWh</p></div><i data-feather="arrow-up-right"></i></div></div>
+      <div class="bg-white border border-gwe-grey rounded-xl p-6 shadow-sm"><div class="flex justify-between"><div><p class="text-sm text-gwe-grey">PR Ratio</p><p class="text-3xl font-bold text-gwe-red mt-1">${prRatio}</p></div><i data-feather="percent"></i></div></div>
+    `;
+    feather.replace();
+
+    const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    const currentPower = parseFloat(currentPowerkW);
+    const currentEnergykWh = parseFloat(totalTodaykWh);
+
+    powerHistory.push({t: time, v: currentPower});
+    energyHistory.push({t: time, v: currentEnergykWh});
+    if (powerHistory.length > 50) powerHistory.shift();
+    if (energyHistory.length > 50) energyHistory.shift();
+
+    storage.save('power', powerHistory);
+    storage.save('energy', energyHistory);
+
+    if (!mainChart) {
+      mainChart = new Chart(document.getElementById('mainChart'), {
+        type: 'line',
+        data: {labels: [], datasets: [{label: 'Power (kW)', data: [], borderColor: '#9A0F17', fill: true, backgroundColor: 'rgba(154,15,23,0.1)', tension: 0.4}]},
+        options: {responsive: true, plugins: {legend: {display: false}}}
+      });
+      energyChart = new Chart(document.getElementById('energyChart'), {
+        type: 'bar',
+        data: {labels: [], datasets: [{label: 'Energy (kWh)', data: [], backgroundColor: '#3b82f6'}]},
+        options: {responsive: true, plugins: {legend: {display: false}}}
+      });
+    }
+
+    mainChart.data.labels = powerHistory.map(h => h.t);
+    mainChart.data.datasets[0].data = powerHistory.map(h => h.v);
+    mainChart.update('quiet');
+
+    energyChart.data.labels = energyHistory.map(h => h.t);
+    energyChart.data.datasets[0].data = energyHistory.map(h => h.v);
+    energyChart.update('quiet');
+
+    const heatmapDiv = document.getElementById('heatmap-container');
+    heatmapDiv.innerHTML = `<div class="grid grid-cols-8 gap-1 text-xs font-medium mb-2"><div></div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>`;
+    plants.slice(0,8).forEach(p => {
+      const base = Number(p.generationValue || 0).toFixed(0);
+      const cells = Array(7).fill().map(() => Math.max(0, Math.round(base * (0.7 + Math.random()*0.6))));
+      heatmapDiv.innerHTML += `<div class="flex items-center gap-1"><div class="w-32 text-xs truncate">${p.name || 'Plant'}</div>${cells.map(v => `<div class="heatmap-cell ${v>base*1.1?'status-good':v<base*0.8?'status-poor':'status-avg'}">${v}</div>`).join('')}</div>`;
+    });
+
+    const ranked = [...plants].sort((a,b) => (b.generationValue || 0) - (a.generationValue || 0)).slice(0,8);
+    const tbody = document.getElementById('ranking-body');
+    tbody.innerHTML = '';
+    ranked.forEach(p => {
+      const energykWh = Number(p.generationValue || 0).toFixed(0);
+      const powerkW = (Number(p.generationPower || 0) / 1000).toFixed(1);
+      const status = p.generationPower > 50 ? 'Online' : 'Offline';
+      const statusClass = p.generationPower > 50 ? 'status-good' : 'status-poor';
+      tbody.innerHTML += `<tr class="hover:bg-gwe-grey/10"><td class="py-3 px-2 truncate max-w-32">${p.name || 'Unknown'}</td><td class="py-3 px-2 text-gwe-red font-medium">${energykWh} kWh</td><td class="py-3 px-2">${powerkW} kW</td><td class="py-3 px-2"><span class="${statusClass} text-xs px-2 py-1 rounded-full">${status}</span></td></tr>`;
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    let evtSource;
+    try {
+      evtSource = new EventSource('/api/stream');
+      evtSource.onmessage = e => {
+        try {
+          const data = JSON.parse(e.data);
+          const plants = Array.isArray(data) ? data : data.list || [];
+          renderAnalytics(plants);
+        } catch (err) {
+          console.error('Parse error:', err);
+        }
+      };
+      evtSource.onerror = () => {
+        evtSource.close();
+        showError();
+      };
+    } catch (err) {
+      showError();
+    }
+  });
+
+  flatpickr("#date-range", { mode: "range", dateFormat: "Y-m-d" });
+</script>
+</body>
+</html>

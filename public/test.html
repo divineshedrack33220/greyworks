@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GWE SolarPulse</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Feather Icons -->
+  <script src="https://unpkg.com/feather-icons"></script>
+
+  <!-- Tailwind config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'gwe-grey': '#A6A6A6',
+            'gwe-red': '#9A0F17',
+            'gwe-dark': '#202020',
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #A6A6A6; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #9A0F17; }
+
+    /* Pulse animation */
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+    .pulse { animation: pulse 1.5s infinite; }
+
+    /* Collapsed sidebar - ICONS ONLY */
+    .sidebar-collapsed {
+      width: 64px !important;
+    }
+    .sidebar-collapsed .logo-img {
+      width: 36px !important;
+      height: 36px !important;
+    }
+    .sidebar-collapsed .menu-label {
+      display: none !important;
+    }
+    .sidebar-collapsed .menu-item {
+      justify-content: center !important;
+      padding: 8px 0 !important;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-50 text-gwe-dark min-h-screen">
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- ==================== SIDEBAR (Scrollable on small screens) ==================== -->
+  <aside id="sidebar" class="bg-gwe-dark text-gwe-grey w-56 sm:w-52 md:w-56 lg:w-60 transition-all duration-300 flex flex-col overflow-y-auto">
+    
+    <!-- Logo (only image, no text) -->
+    <div class="flex justify-center p-4 border-b border-gwe-grey/20">
+      <img src="img/gwe-removebg-preview.png" alt="GWE Logo" class="logo-img w-14 h-14 rounded transition-all duration-300">
+    </div>
+
+    <!-- Menu -->
+    <nav class="flex-1 px-3 py-3 space-y-1">
+      <a href="#" class="menu-item flex items-center px-3 py-2 rounded-lg bg-gwe-red/20 text-white">
+        <i data-feather="activity" class="w-4 h-4 text-gwe-red flex-shrink-0"></i>
+        <span class="menu-label ml-3 text-sm font-medium">Dashboard</span>
+      </a>
+      <a href="#" class="menu-item flex items-center px-3 py-2 rounded-lg hover:bg-gwe-grey/15 hover:text-white transition-colors">
+        <i data-feather="home" class="w-4 h-4 flex-shrink-0"></i>
+        <span class="menu-label ml-3 text-sm">Plants</span>
+      </a>
+      <a href="#" class="menu-item flex items-center px-3 py-2 rounded-lg hover:bg-gwe-grey/15 hover:text-white transition-colors">
+        <i data-feather="hard-drive" class="w-4 h-4 flex-shrink-0"></i>
+        <span class="menu-label ml-3 text-sm">Devices</span>
+      </a>
+      <a href="#" class="menu-item flex items-center px-3 py-2 rounded-lg hover:bg-gwe-grey/15 hover:text-white transition-colors">
+        <i data-feather="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+        <span class="menu-label ml-3 text-sm">Alerts</span>
+      </a>
+      <a href="#" class="menu-item flex items-center px-3 py-2 rounded-lg hover:bg-gwe-grey/15 hover:text-white transition-colors">
+        <i data-feather="bar-chart-2" class="w-4 h-4 flex-shrink-0"></i>
+        <span class="menu-label ml-3 text-sm">Analytics</span>
+      </a>
+      <a href="#" class="menu-item flex items-center px-3 py-2 rounded-lg hover:bg-gwe-grey/15 hover:text-white transition-colors">
+        <i data-feather="file-text" class="w-4 h-4 flex-shrink-0"></i>
+        <span class="menu-label ml-3 text-sm">Reports</span>
+      </a>
+      <a href="#" class="menu-item flex items-center px-3 py-2 rounded-lg hover:bg-gwe-grey/15 hover:text-white transition-colors">
+        <i data-feather="settings" class="w-4 h-4 flex-shrink-0"></i>
+        <span class="menu-label ml-3 text-sm">Settings</span>
+      </a>
+      <a href="#" class="menu-item flex items-center px-3 py-2 rounded-lg hover:bg-gwe-grey/15 hover:text-white transition-colors">
+        <i data-feather="users" class="w-4 h-4 flex-shrink-0"></i>
+        <span class="menu-label ml-3 text-sm">Users</span>
+      </a>
+    </nav>
+
+    <!-- Collapse button -->
+    <button id="collapse-btn" class="mx-3 mb-3 p-2 rounded bg-gwe-grey/20 hover:bg-gwe-grey/30 transition-colors">
+      <i data-feather="chevron-left" class="w-4 h-4 mx-auto"></i>
+    </button>
+  </aside>
+
+  <!-- ==================== MAIN CONTENT ==================== -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- Navbar -->
+    <header class="bg-white border-b border-gray-200 px-4 py-3 sm:px-5 flex items-center justify-between">
+      <div class="flex items-center">
+        <span class="text-sm sm:text-base font-semibold text-gwe-red">WELCOME ABOARD!!!</span>
+      </div>
+      <div class="flex items-center space-x-3 sm:space-x-4">
+        <div class="flex items-center border border-gray-300 rounded-md px-2 py-1.5 text-xs sm:text-sm">
+          <i data-feather="search" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gwe-grey"></i>
+          <input type="text" placeholder="Search..." class="ml-1.5 outline-none w-32 sm:w-48">
+        </div>
+        <i data-feather="bell" class="w-5 h-5 text-gwe-grey cursor-pointer hover:text-gwe-dark"></i>
+        <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gwe-grey flex items-center justify-center text-xs text-white font-medium">JD</div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
+
+      <!-- KPI Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div class="bg-white border border-gwe-grey rounded-lg p-4 hover:shadow transition">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xs text-gwe-grey">Plants</p>
+              <p class="text-xl sm:text-2xl font-bold mt-1">26</p>
+            </div>
+            <i data-feather="home" class="w-5 h-5 text-gwe-grey"></i>
+          </div>
+          <div class="flex items-center mt-2 text-green-500 text-xs">
+            <i data-feather="trending-up" class="w-3 h-3 mr-1"></i>
+            <span>+2.1%</span>
+          </div>
+        </div>
+
+        <div class="bg-white border border-gwe-grey rounded-lg p-4 hover:shadow transition">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xs text-gwe-grey">Power Now</p>
+              <p class="text-xl sm:text-2xl font-bold mt-1">4.38 MW</p>
+            </div>
+            <i data-feather="zap" class="w-5 h-5 text-gwe-grey"></i>
+          </div>
+          <div class="flex items-center mt-2 text-green-500 text-xs">
+            <i data-feather="trending-up" class="w-3 h-3 mr-1"></i>
+            <span>+5.4%</span>
+          </div>
+        </div>
+
+        <div class="bg-white border border-gwe-grey rounded-lg p-4 hover:shadow transition">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xs text-gwe-grey">Today</p>
+              <p class="text-xl sm:text-2xl font-bold mt-1">12.4 MWh</p>
+            </div>
+            <i data-feather="sun" class="w-5 h-5 text-gwe-grey"></i>
+          </div>
+          <div class="flex items-center mt-2 text-gwe-grey text-xs">
+            <i data-feather="minus" class="w-3 h-3 mr-1"></i>
+            <span>Steady</span>
+          </div>
+        </div>
+
+        <div class="bg-white border border-gwe-grey rounded-lg p-4 hover:shadow transition">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xs text-gwe-grey">Devices</p>
+              <p class="text-xl sm:text-2xl font-bold mt-1">22/4</p>
+            </div>
+            <i data-feather="hard-drive" class="w-5 h-5 text-gwe-grey"></i>
+          </div>
+          <div class="flex items-center mt-2 text-gwe-red text-xs">
+            <i data-feather="trending-down" class="w-3 h-3 mr-1"></i>
+            <span>-1</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Plant Map -->
+      <section class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-sm sm:text-base font-semibold text-gwe-dark">Plant Locations</h2>
+          <div class="flex space-x-3 text-xs text-gwe-grey">
+            <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-gwe-red mr-1"></span>Fault</span>
+            <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-gwe-grey mr-1"></span>Normal</span>
+          </div>
+        </div>
+        <div class="h-48 sm:h-64 bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gwe-grey">
+          Map
+        </div>
+      </section>
+
+      <!-- Charts -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <section class="bg-white rounded-lg border border-gray-200 p-4">
+          <h3 class="text-sm font-medium text-gwe-dark mb-3">Realtime Power</h3>
+          <div class="h-40 sm:h-56 bg-gray-50 rounded-lg flex items-center justify-center text-xs text-gwe-grey">
+            Line Chart
+          </div>
+        </section>
+
+        <section class="bg-white rounded-lg border border-gray-200 p-4">
+          <h3 class="text-sm font-medium text-gwe-dark mb-3">Today's Energy</h3>
+          <div class="h-40 sm:h-56 bg-gray-50 rounded-lg flex items-center justify-center text-xs text-gwe-grey">
+            Area Chart
+          </div>
+        </section>
+      </div>
+
+      <section class="bg-white rounded-lg border border-gray-200 p-4">
+        <h3 class="text-sm font-medium text-gwe-dark mb-3">Monthly Overview</h3>
+        <div class="h-40 sm:h-56 bg-gray-50 rounded-lg flex items-center justify-center text-xs text-gwe-grey">
+          Bar Chart
+        </div>
+      </section>
+
+      <!-- Alerts -->
+      <section class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-sm sm:text-base font-semibold text-gwe-dark">Recent Alerts</h2>
+          <button class="text-xs text-gwe-red hover:underline">View All</button>
+        </div>
+
+        <div class="space-y-2 text-xs">
+          <div class="flex items-start p-3 bg-red-50 border-l-4 border-gwe-red rounded">
+            <i data-feather="alert-triangle" class="w-4 h-4 text-gwe-red mt-0.5"></i>
+            <div class="ml-2 flex-1">
+              <p class="font-medium">Solar Farm 12 – Inverter #4</p>
+              <p class="text-gwe-grey">Overheating</p>
+            </div>
+            <span class="text-gwe-grey/70">2m</span>
+          </div>
+
+          <div class="flex items-start p-3 bg-yellow-50 border-l-4 border-yellow-500 rounded">
+            <i data-feather="alert-circle" class="w-4 h-4 text-yellow-600 mt-0.5"></i>
+            <div class="ml-2 flex-1">
+              <p class="font-medium">Rooftop 5 – Sensor #7</p>
+              <p class="text-gwe-grey">Irregular</p>
+            </div>
+            <span class="text-gwe-grey/70">15m</span>
+          </div>
+
+          <div class="flex items-start p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+            <i data-feather="info" class="w-4 h-4 text-blue-600 mt-0.5"></i>
+            <div class="ml-2 flex-1">
+              <p class="font-medium">Solar Farm 8</p>
+              <p class="text-gwe-grey">Maintenance done</p>
+            </div>
+            <span class="text-gwe-grey/70">1h</span>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  // Initialize icons
+  feather.replace();
+
+  // Sidebar collapse
+  const sidebar = document.getElementById('sidebar');
+  const collapseBtn = document.getElementById('collapse-btn');
+  const collapseIcon = collapseBtn.querySelector('i');
+  let isCollapsed = false;
+
+  collapseBtn.addEventListener('click', () => {
+    isCollapsed = !isCollapsed;
+    if (isCollapsed) {
+      sidebar.classList.add('sidebar-collapsed');
+      collapseIcon.setAttribute('data-feather', 'chevron-right');
+    } else {
+      sidebar.classList.remove('sidebar-collapsed');
+      collapseIcon.setAttribute('data-feather', 'chevron-left');
+    }
+    feather.replace();
+  });
+
+  // Auto-collapse on small screens
+  const checkCollapse = () => {
+    if (window.innerWidth < 768 && !isCollapsed) {
+      sidebar.classList.add('sidebar-collapsed');
+      isCollapsed = true;
+      feather.replace();
+    } else if (window.innerWidth >= 768 && isCollapsed) {
+      sidebar.classList.remove('sidebar-collapsed');
+      isCollapsed = false;
+      feather.replace();
+    }
+  };
+
+  window.addEventListener('resize', checkCollapse);
+  window.addEventListener('load', () => {
+    feather.replace();
+    checkCollapse();
+  });
+</script>
+
+</body>
+</html>

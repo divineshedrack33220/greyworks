@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GWE SolarPulse</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Feather Icons -->
+  <script src="https://unpkg.com/feather-icons"></script>
+
+  <!-- Tailwind config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'gwe-grey': '#A6A6A6',
+            'gwe-red': '#9A0F17',
+            'gwe-dark': '#202020',
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #A6A6A6; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #9A0F17; }
+
+    @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+    .pulse { animation: pulse 1.5s infinite; }
+
+    .sidebar-collapsed { width: 64px !important; }
+    .sidebar-collapsed .logo-img { width: 36px !important; height: 36px !important; }
+    .sidebar-collapsed .menu-label { display: none !important; }
+    .sidebar-collapsed .menu-item { justify-content: center !important; padding: 8px 0 !important; }
+
+    iframe { border: none; width: 100%; height: 100%; }
+  </style>
+</head>
+
+<body class="bg-gray-50 text-gwe-dark min-h-screen">
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="bg-gwe-dark text-gwe-grey w-56 sm:w-52 md:w-56 lg:w-60 transition-all duration-300 flex flex-col overflow-y-auto">
+    
+    <div class="flex justify-center p-4 border-b border-gwe-grey/20">
+      <img src="img/gwe-removebg-preview.png" alt="GWE Logo" class="logo-img w-14 h-14 rounded transition-all duration-300">
+    </div>
+
+    <nav class="flex-1 px-3 py-3 space-y-1">
+      <a href="dashboard.html" target="content-frame" class="menu-item flex items-center px-3 py-2 rounded-lg bg-gwe-red/20 text-white">
+        <i data-feather="activity" class="w-4 h-4 text-gwe-red flex-shrink-0"></i>
+        <span class="menu-label ml-3 text-sm font-medium">Dashboard</span>
+      </a>
+      <a href="plants.html" target="content-frame" class="menu-item flex items-center px-3 py-2 rounded-lg hover:bg-gwe-grey/15 hover:text-white transition-colors">
+        <i data-feather="home" class="w-4 h-4 flex-shrink-0"></i>
+        <span class="menu-label ml-3 text-sm">Plants</span>
+      </a>
+      <a href="devices.html" target="content-frame" class="menu-item flex items-center px-3 py-2 rounded-lg hover:bg-gwe-grey/15 hover:text-white transition-colors">
+        <i data-feather="hard-drive" class="w-4 h-4 flex-shrink-0"></i>
+        <span class="menu-label ml-3 text-sm">Devices</span>
+      </a>
+      <a href="alerts.html" target="content-frame" class="menu-item flex items-center px-3 py-2 rounded-lg hover:bg-gwe-grey/15 hover:text-white transition-colors">
+        <i data-feather="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+        <span class="menu-label ml-3 text-sm">Alerts</span>
+      </a>
+      <a href="analytics.html" target="content-frame" class="menu-item flex items-center px-3 py-2 rounded-lg hover:bg-gwe-grey/15 hover:text-white transition-colors">
+        <i data-feather="bar-chart-2" class="w-4 h-4 flex-shrink-0"></i>
+        <span class="menu-label ml-3 text-sm">Analytics</span>
+      </a>
+      <a href="reports.html" target="content-frame" class="menu-item flex items-center px-3 py-2 rounded-lg hover:bg-gwe-grey/15 hover:text-white transition-colors">
+        <i data-feather="file-text" class="w-4 h-4 flex-shrink-0"></i>
+        <span class="menu-label ml-3 text-sm">Reports</span>
+      </a>
+    </nav>
+
+    <button id="collapse-btn" class="mx-3 mb-3 p-2 rounded bg-gwe-grey/20 hover:bg-gwe-grey/30 transition-colors">
+      <i data-feather="chevron-left" class="w-4 h-4 mx-auto"></i>
+    </button>
+  </aside>
+
+  <!-- MAIN CONTENT WITH IFRAME -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <header class="bg-white border-b border-gray-200 px-4 py-3 sm:px-5 flex items-center justify-between">
+      <span class="text-sm sm:text-base font-semibold text-gwe-red">WELCOME ABOARD!!!</span>
+      <div class="flex items-center space-x-3 sm:space-x-4">
+        <div class="flex items-center border border-gray-300 rounded-md px-2 py-1.5 text-xs sm:text-sm">
+          <i data-feather="search" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gwe-grey"></i>
+          <input type="text" placeholder="Search..." class="ml-1.5 outline-none w-32 sm:w-48">
+        </div>
+        <i data-feather="bell" class="w-5 h-5 text-gwe-grey cursor-pointer hover:text-gwe-dark"></i>
+        <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gwe-grey flex items-center justify-center text-xs text-white font-medium">JD</div>
+      </div>
+    </header>
+
+    <iframe name="content-frame" src="dashboard.html" class="flex-1" allowfullscreen></iframe>
+  </div>
+</div>
+
+<script>
+  feather.replace();
+
+  const sidebar = document.getElementById('sidebar');
+  const collapseBtn = document.getElementById('collapse-btn');
+  const collapseIcon = collapseBtn.querySelector('i');
+  let isCollapsed = false;
+
+  collapseBtn.addEventListener('click', () => {
+    isCollapsed = !isCollapsed;
+    sidebar.classList.toggle('sidebar-collapsed', isCollapsed);
+    collapseIcon.setAttribute('data-feather', isCollapsed ? 'chevron-right' : 'chevron-left');
+    feather.replace();
+  });
+
+  // Highlight active menu
+  document.querySelectorAll('a[target="content-frame"]').forEach(link => {
+    link.addEventListener('click', function() {
+      document.querySelectorAll('.menu-item').forEach(l => {
+        l.classList.remove('bg-gwe-red/20', 'text-white');
+        l.classList.add('hover:bg-gwe-grey/15', 'hover:text-white');
+      });
+      this.classList.add('bg-gwe-red/20', 'text-white');
+      this.classList.remove('hover:bg-gwe-grey/15', 'hover:text-white');
+    });
+  });
+
+  const checkCollapse = () => {
+    if (window.innerWidth < 768 && !isCollapsed) {
+      sidebar.classList.add('sidebar-collapsed');
+      isCollapsed = true;
+      feather.replace();
+    } else if (window.innerWidth >= 768 && isCollapsed) {
+      sidebar.classList.remove('sidebar-collapsed');
+      isCollapsed = false;
+      feather.replace();
+    }
+  };
+
+  window.addEventListener('resize', checkCollapse);
+  window.addEventListener('load', () => {
+    feather.replace();
+    checkCollapse();
+  });
+</script>
+</body>
+</html>

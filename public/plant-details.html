@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plant Details | GWE SolarPulse</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+
+  <script>
+    tailwind.config = { theme: { extend: { colors: {
+      'gwe-grey': '#A6A6A6', 'gwe-red': '#9A0F17', 'gwe-dark': '#202020',
+      'gwe-green': '#27AE60', 'gwe-light-grey': '#F7F7F7',
+    }}}};
+  </script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f9fafb; }
+    .filter-btn { padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.375rem; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+    .filter-active { background-color: #9A0F17; color: #fff; }
+    .filter-inactive { background-color: #fff; color: #202020; border: 1px solid #e5e7eb; }
+    .filter-inactive:hover { background-color: #f3f4f6; }
+  </style>
+</head>
+<body class="p-6 lg:p-12" onload="feather.replace()">
+
+  <div class="max-w-7xl mx-auto">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+      <div class="flex items-center gap-5">
+        <button onclick="history.back()" class="p-3 rounded-xl bg-white shadow hover:shadow-lg hover:bg-gwe-light-grey transition-all duration-200 group" aria-label="Go back">
+          <i data-feather="arrow-left" class="w-6 h-6 text-gwe-grey group-hover:text-gwe-red transition-colors"></i>
+        </button>
+
+        <div>
+          <h1 id="plant-name" class="text-3xl font-bold text-gwe-dark">Loading...</h1>
+          <p class="text-gwe-grey text-sm mt-1">ID: <span id="plant-id">—</span> • Last update: <span id="last-update">—</span></p>
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <span id="plant-status" class="px-5 py-2.5 rounded-full text-white font-medium text-sm bg-gray-500">Offline</span>
+        <span id="alerts-badge" class="px-5 py-2.5 rounded-full bg-gwe-green/10 text-gwe-green font-medium text-sm">No Alerts</span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+      <!-- Left Column -->
+      <div class="lg:col-span-1 space-y-6">
+        <img id="plant-image" src="" alt="Plant" class="w-full h-80 object-cover rounded-2xl shadow-xl">
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-white p-6 rounded-xl shadow">
+            <div class="text-gwe-grey text-sm">Installed Capacity</div>
+            <div id="capacity" class="text-2xl font-bold text-gwe-dark">— kWp</div>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow">
+            <div class="text-gwe-grey text-sm">Power Now</div>
+            <div id="power-now" class="text-2xl font-bold text-gwe-red">— kW</div>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow">
+            <div class="text-gwe-grey text-sm">Today Production</div>
+            <div id="today-energy" class="text-2xl font-bold text-gwe-dark">— kWh</div>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow">
+            <div class="text-gwe-grey text-sm">Peak Sun Hours</div>
+            <div id="peak-hours" class="text-2xl font-bold text-gwe-green">— h</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column -->
+      <div class="lg:col-span-2 space-y-8">
+
+        <!-- Live Power Chart -->
+        <div class="bg-white p-8 rounded-2xl shadow-lg">
+          <h3 class="text-xl font-semibold mb-6 text-gwe-dark">Live Power (kW) <span class="text-gwe-green font-normal text-sm">Generated   Consumed</span></h3>
+          <canvas id="liveChart" height="120"></canvas>
+        </div>
+
+        <!-- Historical Production Chart -->
+        <div class="bg-white p-8 rounded-2xl shadow-lg">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-semibold text-gwe-dark">Historical Production (kWh)</h3>
+            <div class="flex gap-2">
+              <button onclick="filterHistorical('daily')" class="filter-btn filter-active" data-period="daily">Daily</button>
+              <button onclick="filterHistorical('monthly')" class="filter-btn filter-inactive" data-period="monthly">Monthly</button>
+              <button onclick="filterHistorical('yearly')" class="filter-btn filter-inactive" data-period="yearly">Yearly</button>
+            </div>
+          </div>
+          <canvas id="historicalChart" height="120"></canvas>
+        </div>
+
+        <div class="bg-white p-8 rounded-2xl shadow-lg">
+          <h3 class="text-xl font-semibold mb-6 text-gwe-dark">Today's Solar Production</h3>
+          <div class="text-center">
+            <div class="text-6xl font-bold text-gwe-green" id="total-solar">—</div>
+            <div class="text-gwe-grey text-lg mt-2">kWh Generated Today</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+<script>
+  const DateTime = luxon.DateTime;
+  let liveChart = null, historicalChart = null, evtSource = null;
+  let currentPlantId = null;
+  const powerHistory = [], consumptionHistory = [];
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const targetName = decodeURIComponent(urlParams.get('name') || '');
+  const targetId = urlParams.get('id') || urlParams.get('stationId') || '';
+
+  async function fetchHistoricalData(plantId, period = 'daily') {
+    if (!plantId) return [];
+    try {
+      const res = await fetch(`/api/plant-history?id=${plantId}&period=${period}`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.history || [];
+      }
+    } catch (err) {
+      console.warn('History fetch failed:', err);
+    }
+    return [];
+  }
+
+  async function loadHistoricalChart(period = 'daily') {
+    if (!currentPlantId) return;
+
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('filter-active'));
+    document.querySelector(`[data-period="${period}"]`).classList.add('filter-active');
+
+    const history = await fetchHistoricalData(currentPlantId, period);
+
+    const labels = history.map(h => DateTime.fromISO(h.date).toFormat(period === 'yearly' ? 'yyyy' : period === 'monthly' ? 'MMM yyyy' : 'MMM dd'));
+    const values = history.map(h => h.kwh || 0);
+
+    if (historicalChart) historicalChart.destroy();
+    historicalChart = new Chart(document.getElementById('historicalChart'), {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'kWh', data: values, backgroundColor: '#27AE60', borderRadius: 6 }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+  }
+
+  function filterHistorical(period) {
+    loadHistoricalChart(period);
+  }
+
+  function updateUI(plant) {
+    if (!plant) return;
+
+    currentPlantId = plant.stationId || plant.id;
+
+    document.getElementById('plant-name').textContent = plant.name || 'Unknown';
+    document.getElementById('plant-id').textContent = currentPlantId || '—';
+    document.getElementById('last-update').textContent = plant.lastUpdateTime
+      ? DateTime.fromMillis(plant.lastUpdateTime * 1000).toFormat('dd/MM/yyyy HH:mm:ss') : '—';
+
+    document.getElementById('plant-image').src = plant.image || 'https://via.placeholder.com/800x600/202020/FFFFFF?text=No+Image';
+
+    const capacity = Number(plant.installedCapacity || 0);
+    const powerW = Number(plant.generationPower || 0);
+    const loadW = Number(plant.loadPower || 0);
+    const todayKWh = Number(plant.generationValue || 0);
+
+    const online = powerW > 50;
+    const statusEl = document.getElementById('plant-status');
+    statusEl.textContent = online ? 'Online' : 'Offline';
+    statusEl.className = online ? 'px-5 py-2.5 rounded-full text-white font-medium text-sm bg-gwe-green' : 'px-5 py-2.5 rounded-full text-white font-medium text-sm bg-gray-500';
+
+    document.getElementById('capacity').textContent = capacity.toFixed(1) + ' kWp';
+    document.getElementById('power-now').textContent = (powerW / 1000).toFixed(2) + ' kW';
+    document.getElementById('today-energy').textContent = todayKWh.toFixed(1) + ' kWh';
+    document.getElementById('peak-hours').textContent = capacity && todayKWh ? (todayKWh / capacity).toFixed(2) + ' h' : '—';
+    document.getElementById('total-solar').textContent = todayKWh.toFixed(1) + ' kWh';
+
+    // Live Power Chart
+    powerHistory.push(powerW / 1000);
+    consumptionHistory.push(loadW / 1000);
+    if (powerHistory.length > 60) { powerHistory.shift(); consumptionHistory.shift(); }
+
+    const liveLabels = Array.from({length: powerHistory.length}, (_, i) => 
+      DateTime.now().minus({ seconds: (powerHistory.length - 1 - i) * 10 }).toFormat('HH:mm:ss')
+    );
+
+    if (liveChart) liveChart.destroy();
+    liveChart = new Chart(document.getElementById('liveChart'), {
+      type: 'line',
+      data: {
+        labels: liveLabels,
+        datasets: [
+          { label: 'Generated', data: powerHistory, borderColor: '#27AE60', backgroundColor: 'rgba(39,174,96,0.15)', fill: true, tension: 0.4 },
+          { label: 'Consumed', data: consumptionHistory, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.15)', fill: true, tension: 0.4 }
+        ]
+      },
+      options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    // Load real historical data from DB
+    loadHistoricalChart('daily');
+  }
+
+  function connectToStream() {
+    evtSource = new EventSource('/api/stream');
+    evtSource.onmessage = e => {
+      try {
+        let plants = JSON.parse(e.data);
+        plants = Array.isArray(plants) ? plants : plants.list || plants.data?.list || plants.stations || [plants];
+        const plant = plants.find(p => String(p.stationId || p.id) === targetId || (p.name || p.stationName) === targetName);
+        if (plant) updateUI(plant);
+      } catch (err) { console.error('Parse error:', err); }
+    };
+    evtSource.onerror = () => { evtSource.close(); setTimeout(connectToStream, 3000); };
+  }
+
+  connectToStream();
+</script>
+</body>
+</html>
