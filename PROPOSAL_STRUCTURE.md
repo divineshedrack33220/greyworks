@@ -51,35 +51,7 @@ Most solar monitoring tools poll on fixed intervals, introducing latency and API
 
 ---
 
-## 4. Implementation Phases
-
-### Phase 1 — Foundation (Weeks 1–3)
-- API client setup & authentication bridge
-- Core data models & storage layer
-- Basic sync pipeline (plants + real-time)
-- Single-plant dashboard
-
-### Phase 2 — Real-Time & Analytics (Weeks 4–6)
-- SSE streaming infrastructure
-- Historical energy rollups
-- Multi-period charting
-- Device-level drill-down
-
-### Phase 3 — Alarms & Reporting (Weeks 7–9)
-- Alarm ingestion & deduplication
-- Push notifications
-- PDF/CSV report generation
-- Export workflows
-
-### Phase 4 — Hardening & Scale (Weeks 10–12)
-- Rate-limit handling & token lifecycle
-- Multi-tenant isolation
-- Performance optimization
-- Deployment & monitoring
-
----
-
-## 5. Technical Considerations
+## 4. Technical Considerations
 
 | Area | Challenge | Our Approach |
 |------|-----------|-------------|
@@ -92,7 +64,7 @@ Most solar monitoring tools poll on fixed intervals, introducing latency and API
 
 ---
 
-## 6. Deliverables
+## 5. Deliverables
 
 - Fully functional web dashboard deployed on a private server
 - Real-time data sync (every 5 min or configurable)
@@ -104,9 +76,8 @@ Most solar monitoring tools poll on fixed intervals, introducing latency and API
 
 ---
 
-## 7. Commercial Terms
+## 6. Commercial Terms
 
-- **Timeline:** 12 weeks from kickoff
 - **Deliverable Format:** Deployed instance + private Git repository
 - **Post-Launch Support:** 2 months included (bug fixes, data corrections)
 - **Training:** 2 sessions for operations team
