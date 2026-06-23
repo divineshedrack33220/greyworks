@@ -1,7 +1,7 @@
 # Proposal: Persistent Solar Fleet Monitoring & Historical Analytics
 
 **Prepared for:** GWE Operations & Engineering Team  
-**From:** [Your Name / Team]  
+**From:** Divine Shedrack — Senior Software Engineer / AI Engineer  
 **Subject:** Solving data volatility across multi-site solar PV installations
 
 ---

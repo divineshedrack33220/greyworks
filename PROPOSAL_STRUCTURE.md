@@ -1,5 +1,8 @@
 # GWE SolarPulse — Real-Time Solar Monitoring Platform
 
+**Prepared by:** Divine Shedrack — Senior Software Engineer / AI Engineer  
+**Collaborator:** Great Itodo — UI/UX / Frontend Developer
+
 ## 1. Executive Summary
 
 A centralized, real-time solar PV monitoring dashboard that aggregates data from Solarman-compatible inverters and dataloggers across multiple plant sites. Delivers live power flows, historical energy analytics, alarm management, and automated reporting via a single pane of glass.
