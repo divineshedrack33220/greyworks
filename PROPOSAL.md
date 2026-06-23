@@ -2,6 +2,7 @@
 
 **Prepared for:** GWE Operations & Engineering Team  
 **From:** Divine Shedrack — Senior Software Engineer / AI Engineer  
+**Collaborator:** Great Itodo — UI/UX / Frontend Developer  
 **Subject:** Solving data volatility across multi-site solar PV installations
 
 ---
@@ -52,6 +53,50 @@ The result: you get the live view you have now, **plus** the full historical rec
 
 ---
 
+## Architecture Overview
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  Solarman API   │────▶│  Sync Engine     │────▶│  Database Layer │
+│  (3rd Party)    │     │  (Cloud Service) │     │  (Time-Series)  │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+                                                          │
+                                                          ▼
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  Frontend App   │◀────│  API Gateway     │◀────│  Live Stream    │
+│  (Web/Mobile)   │     │  (REST + SSE)    │     │  (Server-Sent)  │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+```
+
+Most solar monitoring tools poll on fixed intervals, introducing latency and API rate limits. Our sync engine uses a proprietary adaptive polling strategy combined with an event-streaming layer that pushes updates to the UI in real time without WebSocket overhead. The database schema is optimized for time-series queries without requiring a separate TSDB — keeping infrastructure costs low while maintaining sub-second query performance on year-long histories.
+
+---
+
+## Core Modules
+
+### Data Acquisition Layer
+- **Solarman API Client** — Custom HTTP client with automatic token rotation, request retry with exponential backoff, and payload normalization across v1/v2 endpoints
+- **Multi-Protocol Adapter** — Abstraction layer that normalizes Solarman's disparate response shapes (stations, inverters, loggers, alarms) into a unified internal model
+- **Adaptive Sync Scheduler** — Dynamic polling intervals based on plant activity level; idle plants poll less frequently, active plants poll more aggressively
+
+### Storage Engine
+- **Unified Document Schema** — Single collection for plant-level data with embedded live metrics; avoids expensive joins and keeps read paths efficient
+- **Rollup Aggregator** — On-write data rollups for hourly, daily, monthly, yearly views — eliminating the need for a separate analytics pipeline
+- **Cache Layer** — In-memory hot cache for live dashboard values; cold storage for historical lookups
+
+### API & Streaming
+- **RESTful Endpoints** — CRUD operations for plants, devices, alarms, and energy data
+- **Server-Sent Events (SSE)** — Lightweight real-time push to all connected dashboards without polling or WebSocket infrastructure
+- **Alert Webhook** — Configurable outbound hooks for alarm notifications (email, SMS, Slack)
+
+### Frontend Dashboard
+- **Modular Component System** — Dashboard, Plants Map, Device Tree, Analytics Charts, Alarm Console, Report Builder
+- **Live Data Grid** — Auto-updating table with per-plant metrics (generation, consumption, battery, grid)
+- **Charting Engine** — Multi-period energy bar charts (daily, monthly, yearly) with zoom and export
+- **Collapsible Navigation** — Responsive sidebar with iframe-based page isolation for modular development
+
+---
+
 ## What This Enables
 
 With persistent historical data, your team can:
@@ -86,13 +131,28 @@ Our solution addresses all of these through a combination of architecture decisi
 
 ---
 
+## Technical Considerations
+
+| Area | Challenge | Our Approach |
+|------|-----------|-------------|
+| **Auth** | Solarman tokens expire silently | Auto-extraction + refresh pipeline (patent-pending heuristic) |
+| **API Limits** | 15 req/min per token | Multi-token pool with intelligent routing |
+| **Data Inconsistency** | Different response shapes per endpoint | Schema normalization layer with smart merging |
+| **Real-Time** | Polling is wasteful | SSE push from in-memory state store |
+| **History** | Standard databases not ideal for time-series | Embedded rollup technique (no extra DB needed) |
+| **Offline** | Network interruptions | Local buffering + reconciliation on reconnect |
+
+---
+
 ## What We Deliver
 
 - **A fully deployed system** that continuously collects and stores plant data
 - **Live dashboard** with auto-refreshing real-time view of all plants
 - **Historical analytics** — daily, monthly, and yearly energy charts per plant
-- **Persistent alarm log** — alarms are recorded and retained, not lost on refresh
+- **Persistent alarm console** — alarms are recorded and retained, not lost on refresh
 - **Device telemetry** — per-inverter data with drill-down capability
+- **Admin panel** for plant and device management
+- **Reporting** — API documentation and data export workflows
 - **Remote access** — accessible from any browser, no local installation required
 - **Operations training** — your team will know how to use and maintain the system
 
@@ -107,6 +167,15 @@ We do not deliver documentation that tells someone else how to build this. We do
 - The value is in the **operational experience** — knowing what breaks and how to fix it before it affects you
 
 This is not a product you buy off the shelf. It is a solution we operate for you.
+
+---
+
+## Commercial Terms
+
+- **Deliverable Format:** Deployed instance + private Git repository
+- **Post-Launch Support:** 2 months included (bug fixes, data corrections)
+- **Training:** 2 sessions for operations team
+- **Exclusivity:** Platform built specifically for GWE's monitoring needs
 
 ---
 
