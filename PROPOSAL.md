@@ -23,6 +23,34 @@ But here is what happens in practice:
 
 This is not a display problem. This is a **data persistence problem**. The information is transient. It flows in, it is shown momentarily, and it disappears. There is no memory.
 
+### Current State vs. Target State
+
+```
+                    BEFORE (Current)                       AFTER (Proposed)
+                    ═══════════════                       ═══════════════
+
+┌──────────────┐                    ┌──────────────┐     ┌──────────────┐                    ┌──────────────┐
+│  Solar Plant  │──── live data ────▶│   Dashboard   │     │  Solar Plant  │──── live data ────▶│  Sync Engine  │
+│  (Solarman)   │                   │  (ephemeral)  │     │  (Solarman)   │                   │  (Persistent) │
+└──────────────┘                    └──────────────┘     └──────────────┘                    └──────┬───────┘
+       │                                                                                             │
+       │    ┌───────────────────────────────────────┐               ┌────────────────────────────────┤
+       │    │  ❌ Close browser → all data lost     │               │                                │
+       │    │  ❌ No yesterday's data               │               ▼                                ▼
+       │    │  ❌ No trend to analyse               │     ┌──────────────┐                  ┌──────────────┐
+       │    │  ❌ Cannot compare sites              │     │  Database     │                  │  Dashboard    │
+       │    │  ❌ No performance history            │     │  (Historical) │◀──── queries ────│  (Live + All  │
+       │    └───────────────────────────────────────┘     └──────────────┘                  │   History)    │
+                                                                                           └──────────────┘
+                                                                                     ┌────────────────────────┐
+                                                                                     │  ✅ Close browser →     │
+                                                                                     │     data still there    │
+                                                                                     │  ✅ Yesterday's data    │
+                                                                                     │  ✅ Trends & analytics  │
+                                                                                     │  ✅ Site comparisons     │
+                                                                                     └────────────────────────┘
+```
+
 For a fleet operator, this means:
 
 - **No accountability** — You cannot verify performance over time
@@ -51,21 +79,94 @@ Instead of relying on live-only views that refresh into emptiness, our solution 
 
 The result: you get the live view you have now, **plus** the full historical record you have been missing.
 
+### End-to-End Data Flow
+
+```
+ SOLARMAN API                        SYNC ENGINE                        DATABASE                          FRONTEND
+ ═════════════                       ════════════                       ════════                          ════════
+
+                    ┌──────────────────────────────┐
+ ───────────────────│  1. Fetch Plant List         │
+   POST /station/   │     (all stations)           │
+   search           └─────────────┬────────────────┘
+                                  │
+                    ┌─────────────▼────────────────┐
+ ───────────────────│  2. Fetch Real-Time Data     │
+   POST /station/   │     (power, energy, status)  │
+   realtime         └─────────────┬────────────────┘
+                                  │
+                    ┌─────────────▼────────────────┐
+ ───────────────────│  3. Fetch Device Inventory  │
+   POST /device/    │     (inverters, loggers)    │
+   page             └─────────────┬────────────────┘
+                                  │
+                    ┌─────────────▼────────────────┐
+ ───────────────────│  4. Fetch Device Telemetry  │
+   POST /device/    │     (per-inverter metrics)  │
+   currentData      └─────────────┬────────────────┘
+                                  │
+                    ┌─────────────▼────────────────┐
+                    │  5. Normalize & Map Fields   │
+                    │     (unify response shapes)  │
+                    └─────────────┬────────────────┘
+                                  │
+                    ┌─────────────▼────────────────┐
+                    │  6. Upsert to Database       │───── upsert ───▶  ┌──────────────────┐
+                    │     (insert or update)       │                   │  Station Record  │
+                    └─────────────┬────────────────┘                   │  Device Record   │
+                                  │                                    │  Alarm Record    │
+                                  │                                    └──────────────────┘
+                                  │
+                    ┌─────────────▼────────────────┐
+                    │  7. Broadcast to Clients     │───── SSE push ──▶  ┌──────────────────┐
+                    │     (live update all UIs)    │                    │  Dashboard UI    │
+                    └──────────────────────────────┘                    │  (auto-refresh)  │
+                                                                       └──────────────────┘
+```
+
 ---
 
 ## Architecture Overview
 
 ```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Solarman API   │────▶│  Sync Engine     │────▶│  Database Layer │
-│  (3rd Party)    │     │  (Cloud Service) │     │  (Time-Series)  │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
-                                                          │
-                                                          ▼
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Frontend App   │◀────│  API Gateway     │◀────│  Live Stream    │
-│  (Web/Mobile)   │     │  (REST + SSE)    │     │  (Server-Sent)  │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         SYSTEM ARCHITECTURE                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────────┐    ┌──────────────────────┐    ┌──────────────────────┐  │
+│  │              │    │                      │    │                      │  │
+│  │  Solarman    │◄──►│   ACQUISITION LAYER  │◄──►│   STORAGE LAYER     │  │
+│  │  API         │    │                      │    │                      │  │
+│  │  (External)  │    │  ┌────────────────┐  │    │  ┌────────────────┐  │  │
+│  └──────────────┘    │  │ Sync Engine    │  │    │  │ MongoDB        │  │  │
+│                      │  │                │  │    │  │ (Persistent)   │  │  │
+│                      │  │ • Auth handler │  │    │  │                │  │  │
+│                      │  │ • Rate limiter │  │    │  │ • Stations     │  │  │
+│                      │  │ • Retry logic  │  │    │  │ • Devices      │  │  │
+│                      │  │ • Normalizer   │  │    │  │ • Alarms       │  │  │
+│                      │  └────────────────┘  │    │  └────────────────┘  │  │
+│                      └──────────────────────┘    └──────────────────────┘  │
+│                                                          │                 │
+│                                                          ▼                 │
+│                      ┌─────────────────────────────────────────────┐      │
+│                      │           DELIVERY LAYER                    │      │
+│                      │                                             │      │
+│                      │  ┌──────────┐  ┌──────────┐  ┌──────────┐  │      │
+│                      │  │ REST API │  │ SSE Push │  │ Webhooks │  │      │
+│                      │  └──────────┘  └──────────┘  └──────────┘  │      │
+│                      └─────────────────────┬───────────────────────┘      │
+│                                            │                               │
+│                                            ▼                               │
+│                      ┌─────────────────────────────────────────────┐      │
+│                      │           PRESENTATION LAYER                │      │
+│                      │                                             │      │
+│                      │  ┌──────────┐  ┌──────────┐  ┌──────────┐  │      │
+│                      │  │Dashboard │  │Analytics │  │Alarms    │  │      │
+│                      │  │ Live Grid│  │ Charts   │  │ Console  │  │      │
+│                      │  └──────────┘  └──────────┘  └──────────┘  │      │
+│                      └─────────────────────────────────────────────┘      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 Most solar monitoring tools poll on fixed intervals, introducing latency and API rate limits. Our sync engine uses a proprietary adaptive polling strategy combined with an event-streaming layer that pushes updates to the UI in real time without WebSocket overhead. The database schema is optimized for time-series queries without requiring a separate TSDB — keeping infrastructure costs low while maintaining sub-second query performance on year-long histories.
@@ -120,12 +221,29 @@ None of this is possible when data disappears on every page refresh.
 
 Making data persist sounds simple. In practice, there are challenges that a straightforward approach does not solve:
 
-- **API inconsistencies** — The data source does not always return data in the same shape. Field names, units, and availability vary across endpoints.
-- **Connection fragility** — Network interruptions, timeouts, and rate limits are common. The system must handle these without data loss.
-- **Time synchronization** — Device-reported timestamps drift. Reported times must be aligned to a reliable clock.
-- **Idempotent updates** — Repeated data pulls must not create duplicate records or corrupt existing history.
+### Complexity Breakdown
+
+```
+Challenge                                       Impact if Unaddressed
+─────────────────────────────────────────────────────────────────────────────
+API inconsistencies                             Data loss, inaccurate metrics
+Connection fragility                            Gaps in historical record
+Time synchronization                            Misaligned trends, wrong conclusions
+Idempotent updates                              Duplicate records, skewed totals
+Live + historical coexistence                   Slow queries, poor user experience
+Graceful degradation                            One failure blocks all data collection
+Token expiration                                Complete system downtime
+Rate limiting                                   Incomplete sync cycles
+```
+
+### Detailed Analysis
+
+- **API inconsistencies** — The data source does not always return data in the same shape. Field names, units, and availability vary across endpoints. A naive implementation would silently drop fields or misinterpret values.
+- **Connection fragility** — Network interruptions, timeouts, and rate limits are common. The system must handle these without data loss or partial state corruption.
+- **Time synchronization** — Device-reported timestamps drift. Reported times must be aligned to a reliable clock to ensure chronological accuracy in trends and reports.
+- **Idempotent updates** — Repeated data pulls must not create duplicate records or corrupt existing history. Every sync must be safe to run multiple times.
 - **Live + historical coexistence** — The system must serve instantaneous live data and years of historical data from the same interface without performance degradation.
-- **Graceful degradation** — A failure in one plant's data feed must not block data collection for other plants.
+- **Graceful degradation** — A failure in one plant's data feed must not block data collection for other plants. Partial data is better than no data.
 
 Our solution addresses all of these through a combination of architecture decisions, error handling patterns, and data modeling choices developed through direct experience with the platform.
 
@@ -133,18 +251,158 @@ Our solution addresses all of these through a combination of architecture decisi
 
 ## Technical Considerations
 
-| Area | Challenge | Our Approach |
-|------|-----------|-------------|
-| **Auth** | Solarman tokens expire silently | Auto-extraction + refresh pipeline (patent-pending heuristic) |
-| **API Limits** | 15 req/min per token | Multi-token pool with intelligent routing |
-| **Data Inconsistency** | Different response shapes per endpoint | Schema normalization layer with smart merging |
-| **Real-Time** | Polling is wasteful | SSE push from in-memory state store |
-| **History** | Standard databases not ideal for time-series | Embedded rollup technique (no extra DB needed) |
-| **Offline** | Network interruptions | Local buffering + reconciliation on reconnect |
+| Area | Challenge | Our Approach | Risk Level |
+|------|-----------|-------------|------------|
+| **Auth** | Solarman tokens expire silently | Auto-extraction + refresh pipeline (patent-pending heuristic) | 🔴 Critical |
+| **API Limits** | 15 req/min per token | Multi-token pool with intelligent routing | 🟡 High |
+| **Data Inconsistency** | Different response shapes per endpoint | Schema normalization layer with smart merging | 🟡 High |
+| **Real-Time** | Polling is wasteful | SSE push from in-memory state store | 🟢 Moderate |
+| **History** | Standard databases not ideal for time-series | Embedded rollup technique (no extra DB needed) | 🟢 Moderate |
+| **Offline** | Network interruptions | Local buffering + reconciliation on reconnect | 🟢 Moderate |
+| **Data Volume** | Growing history slows queries | Time-based partitioning + archival strategy | 🟡 High |
+| **Multi-Site** | Different plant configurations | Configuration-driven per-plant sync profiles | 🟢 Moderate |
+
+### Sync Cycle Dependencies
+
+```
+┌──────────────┐    success      ┌─────────────────┐    success      ┌──────────────────┐
+│  Fetch Plant  │───────────────▶│  Fetch Real-Time │───────────────▶│  Fetch Device     │
+│  List         │                │  Per Plant       │                │  Inventory        │
+└──────┬───────┘                └─────────────────┘                └────────┬─────────┘
+       │                                                                     │
+       │  failure                     failure                                 │  failure
+       ▼                                ▼                                      ▼
+┌──────────────────────────────────────────────────────────────────────────────────────┐
+│                             RETRY QUEUE (up to 3 attempts)                           │
+│              Failed operations are retried with exponential backoff                  │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+                                                                                        │
+                                                                               ┌────────▼─────────┐
+                                                                               │  Fetch Device    │
+                                                                               │  Telemetry       │
+                                                                               └────────┬─────────┘
+                                                                                        │
+                                                                               ┌────────▼─────────┐
+                                                                               │  Normalize &     │
+                                                                               │  Store Data      │
+                                                                               └──────────────────┘
+```
 
 ---
 
-## What We Deliver
+## Cost-Benefit Analysis
+
+### Estimated Annual Impact of Data Loss (Before)
+
+| Cost Factor | Estimated Loss/Year |
+|-------------|-------------------|
+| Unidentified performance degradation (3–5% output loss) | $XX,XXX – $XX,XXX |
+| Manual data collection & reporting labor | $X,XXX – $XX,XXX |
+| Dispute resolution without audit trail | $X,XXX – $XX,XXX |
+| Delayed fault detection → extended downtime | $XX,XXX – $XX,XXX |
+| **Total estimated annual cost of data volatility** | **$XX,XXX – $XX,XXX** |
+
+### Value Unlocked (After)
+
+| Value Driver | Annual Benefit |
+|-------------|----------------|
+| Early degradation detection → proactive maintenance | $XX,XXX – $XX,XXX |
+| Automated reporting → zero manual effort | $X,XXX – $XX,XXX |
+| Performance optimization via trend analysis | $XX,XXX – $XX,XXX |
+| Audit-ready data → dispute protection | $X,XXX – $XX,XXX |
+| **Total estimated annual value** | **$XX,XXX – $XX,XXX** |
+
+### Break-Even Timeline
+
+```
+Investment
+    │
+    │  ▲
+    │  │                         ┌───────────────────
+    │  │                        /│  Value Accrued
+    │  │                       / │
+    │  │                      /  │
+    │  │                     /   │
+    │  │                    /    │
+    │  │                   /     │
+    │  │                  /      │
+    │  │                 /       │
+    │  │                /        │
+    │  │               /         │
+    │  │              /          │
+    │  │             /           │
+    │  │            /            │
+    │  │           /             │
+    │  │          /              │
+    │  │         /               │
+    │  │        /                │
+    │  │       /                 │
+    │  │      /                  │
+    │  │     /                   │
+    │  │    /                    │
+    │  │   /                     │
+    │  │  /                      │
+    │  │ /                       │
+    │  │/                        │
+    │  └─────────────────────────┴─────────────────────► Time
+    │         ▲                                        │
+    │         │                                        │
+    │    Investment cost                         Breakeven
+    │    (deployment)                            reached
+    └────────────────────────────────────────────────────────
+```
+
+---
+
+## Risk Assessment & Mitigation
+
+| Risk | Probability | Impact | Mitigation |
+|------|-----------|--------|-----------|
+| Solarman API changes breaking compatibility | Medium | High | API version pinning + automated integration tests |
+| Network outages interrupting data collection | Medium | Medium | Local buffering + automatic replay on reconnect |
+| Token expiry causing auth failures | High | Critical | Multi-source token strategy with auto-refresh |
+| Data volume growing beyond projections | Low | Medium | Configurable retention policy + archive pipeline |
+| Hardware failure (server) | Low | High | Automated backup + recovery procedures |
+| Scope creep delaying delivery | Medium | Medium | Phased rollout with clear milestones per plant |
+
+---
+
+## Data Retention & Lifecycle
+
+```
+Data Lifecycle Pipeline
+
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│  RAW INGESTION   │────▶│  ACTIVE STORAGE  │────▶│  ARCHIVE         │
+│                  │     │                  │     │                  │
+│ • Live metrics   │     │ • Current month  │     │ • Older months   │
+│ • Real-time      │     │ • Last 30 days   │     │ • Annual backup  │
+│   updates        │     │ • Query-optimized│     │ • Compressed     │
+│ • Raw API        │     │ • Indexed        │     │ • Cold storage   │
+│   responses      │     │                  │     │                  │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
+         │                       │                        │
+         │                       │                        │
+         ▼                       ▼                        ▼
+  Retention: 48 hours    Retention: 12 months     Retention: 7 years
+  (buffer before        (active analytics        (compliance and
+   normalization)        and reporting)           long-term trends)
+```
+
+---
+
+## Resource Requirements
+
+| Resource | Specification | Purpose |
+|----------|-------------|---------|
+| **Server** | 2 vCPU, 4 GB RAM, 50 GB SSD | Application + database host |
+| **Network** | Static IP or DNS, outbound HTTPS | API connectivity to Solarman |
+| **Access** | Solarman API credentials (HAR file or token) | Data source authentication |
+| **Monitoring** | Optional: uptime monitoring service | Ensure continuous data collection |
+
+---
+
+## Deliverables
 
 - **A fully deployed system** that continuously collects and stores plant data
 - **Live dashboard** with auto-refreshing real-time view of all plants
